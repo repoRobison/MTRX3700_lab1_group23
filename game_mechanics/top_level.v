@@ -107,6 +107,7 @@ module top_level #(
     // without requiring the player to toggle SW0 manually.
     //=========================================================================
     logic [1:0]           difficulty;
+    logic [`GP_BPM_W-1:0] beat_bpm;
     logic [`GP_MS_W-1:0]  tick_ms;
     logic [`GP_COUNT_W-1:0] countdown_min;
     logic [`GP_COUNT_W-1:0] countdown_mask;
@@ -139,6 +140,7 @@ module top_level #(
         .reset             (game_reset),
         .level_switch      (level),
         .difficulty        (difficulty),
+        .beat_bpm          (beat_bpm),
         .tick_ms           (tick_ms),
         .countdown_min     (countdown_min),
         .countdown_mask    (countdown_mask),
@@ -161,7 +163,7 @@ module top_level #(
     ) u_beat_gen (
         .clk      (CLOCK_50),
         .reset    (round_reset),
-        .tick_ms  (tick_ms),
+        .bpm      (beat_bpm),
         .tick     (beat_tick),
         .phase_ms (phase_ms)
     );

@@ -70,6 +70,7 @@
 // parameter would silently lie about its own range.
 `define GP_TIMER_MAX_MS     2047
 `define GP_MS_W             11      // == $clog2(GP_TIMER_MAX_MS)
+`define GP_BPM_W            8       // supports integer tempos from 1..255 BPM
 
 //-----------------------------------------------------------------------------
 // 3. Game feel                                    <-- likely Part B target
@@ -152,11 +153,11 @@
 // Selected by SW2:SW1, applied through a clean automatic reset, and shown
 // one-hot on LEDR9:7.
 //
-//   level  tick_ms  countdown  win_ms  perf_ms  cadence  chord  notes/s  R7
-//   -----  -------  ---------  ------  -------  -------  -----  -------  ----
-//   easy     750      3 .. 6     750      250       2        1    0.67   pass
-//   medium   500      3 .. 6     400      150       2        1    1.00   pass
-//   hard     400      2 .. 5     250       80       2        2    1.25   pass
+//   level   song             bpm  countdown  win_ms  perf_ms  cadence  chord
+//   -----   ---------------  ---  ---------  ------  -------  -------  -----
+//   easy    Come Together     83    3 .. 6     700      250       2        1
+//   medium  Get Back         120    3 .. 6     400      150       2        1
+//   hard    Get Back         120    2 .. 5     250       80       2        2
 //
 // The perfect window is 40%, 48% and 40% of its own hit window, so "perfect"
 // stays a real discrimination at every level rather than becoming either
@@ -171,9 +172,10 @@
 // allowed on hard. GP_L*_MAX_CHORD is how that is enforced, and it becomes a
 // third R13 differentiator alongside tick speed and window length.
 //
-// These play-tested starting values deliberately increase the minimum warning
-// to 2.25 s on Easy, 1.5 s on Medium and 0.8 s on Hard. The scheduler enforces
-// the chord column across all lanes at run time.
+// Medium and Hard deliberately share the exact 120 BPM Get Back timebase.
+// Hard permits two independently scheduled notes to coincide, but does not
+// force a second lane. Chords therefore remain an occasional possibility
+// rather than a fixed-probability pattern.
 
 // CMIN/CMASK, not CMIN/CMAX: the countdown value is computed as
 //     cand = CMIN + (rnd & CMASK)
@@ -182,17 +184,21 @@
 // that is not a compile-time power of two synthesises a real divider: dozens
 // of ALMs and a long combinational path, to buy nothing a player can perceive.
 //
-// Every tick_ms value is an exact integer number of 50 MHz clock cycles.
+// beat_gen uses a fractional accumulator. Over exactly one minute of FPGA
+// clocks it emits exactly BPM ticks, even where 60/BPM is not a whole number of
+// milliseconds (83 BPM alternates between adjacent clock-length intervals).
 
-`define GP_L0_TICK_MS     750   // easy
+`define GP_L0_BPM         83        // Come Together
+`define GP_L0_TICK_MS     723       // nearest whole ms; validation/docs only
 `define GP_L0_CMIN        3
 `define GP_L0_CMASK       3         // 3 + (0..3) -> 3..6
-`define GP_L0_WIN_MS      750       // full tick
+`define GP_L0_WIN_MS      700       // below the shortest 83 BPM interval
 `define GP_L0_PERFECT_MS  250       // widest perfect window
 `define GP_L0_CADENCE     2         // spawn attempt every 2 ticks
 `define GP_L0_MAX_CHORD   1         // no two notes resolve on one tick
 
-`define GP_L1_TICK_MS     500   // medium  <-- demo the 15 s run on this one
+`define GP_L1_BPM         120       // Get Back
+`define GP_L1_TICK_MS     500       // exact whole-ms period; validation/docs
 `define GP_L1_CMIN        3
 `define GP_L1_CMASK       3         // 3 + (0..3) -> 3..6
 `define GP_L1_WIN_MS      400
@@ -200,7 +206,8 @@
 `define GP_L1_CADENCE     2
 `define GP_L1_MAX_CHORD   1         // no two notes resolve on one tick
 
-`define GP_L2_TICK_MS     400   // hard
+`define GP_L2_BPM         120       // Get Back; difficulty comes from chords
+`define GP_L2_TICK_MS     500       // exact whole-ms period; validation/docs
 `define GP_L2_CMIN        2
 `define GP_L2_CMASK       3         // 2 + (0..3) -> 2..5
 `define GP_L2_WIN_MS      250

@@ -41,6 +41,7 @@ module level_select (
     input  logic [1:0]               level_switch,
 
     output logic [1:0]               difficulty,
+    output logic [`GP_BPM_W-1:0]     beat_bpm,
     output logic [`GP_MS_W-1:0]      tick_ms,
     output logic [`GP_COUNT_W-1:0]   countdown_min,
     output logic [`GP_COUNT_W-1:0]   countdown_mask,
@@ -68,6 +69,7 @@ module level_select (
     always_comb begin
         case (difficulty)
             EASY: begin
+                beat_bpm          = `GP_BPM_W'(`GP_L0_BPM);
                 tick_ms           = `GP_MS_W'(`GP_L0_TICK_MS);
                 countdown_min     = `GP_COUNT_W'(`GP_L0_CMIN);
                 countdown_mask    = `GP_COUNT_W'(`GP_L0_CMASK);
@@ -79,6 +81,7 @@ module level_select (
             end
 
             MEDIUM: begin
+                beat_bpm          = `GP_BPM_W'(`GP_L1_BPM);
                 tick_ms           = `GP_MS_W'(`GP_L1_TICK_MS);
                 countdown_min     = `GP_COUNT_W'(`GP_L1_CMIN);
                 countdown_mask    = `GP_COUNT_W'(`GP_L1_CMASK);
@@ -90,6 +93,7 @@ module level_select (
             end
 
             default: begin
+                beat_bpm          = `GP_BPM_W'(`GP_L2_BPM);
                 tick_ms           = `GP_MS_W'(`GP_L2_TICK_MS);
                 countdown_min     = `GP_COUNT_W'(`GP_L2_CMIN);
                 countdown_mask    = `GP_COUNT_W'(`GP_L2_CMASK);

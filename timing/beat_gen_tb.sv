@@ -7,7 +7,9 @@ module beat_gen_tb;
     // ------------------------------------------------------------
 
     localparam integer SIM_CLKS_PER_MS = 2;
-    localparam integer SIM_TICK_MS     = 5;
+    localparam integer SIM_BPM         = 83;
+    localparam integer MINUTE_CLKS     = 60000 * SIM_CLKS_PER_MS;
+    localparam integer SHORT_INTERVAL  = MINUTE_CLKS / SIM_BPM;
 
 
     // ------------------------------------------------------------
@@ -17,7 +19,7 @@ module beat_gen_tb;
     logic clk;
     logic reset;
 
-    logic [10:0] tick_ms;
+    logic [7:0] bpm;
 
     logic tick;
     logic [10:0] phase_ms;
@@ -32,7 +34,7 @@ module beat_gen_tb;
     ) dut (
         .clk(clk),
         .reset(reset),
-        .tick_ms(tick_ms),
+        .bpm(bpm),
         .tick(tick),
         .phase_ms(phase_ms)
     );
@@ -66,7 +68,7 @@ module beat_gen_tb;
     initial begin
 
         reset = 1'b1;
-        tick_ms = 11'(SIM_TICK_MS);
+        bpm = 8'(SIM_BPM);
 
         tick_count = 0;
         cycle_count = 0;
@@ -77,6 +79,7 @@ module beat_gen_tb;
         // Hold reset for two clock cycles.
         repeat (2) @(posedge clk);
 
+        @(negedge clk);
         reset = 1'b0;
 
 
@@ -84,7 +87,9 @@ module beat_gen_tb;
         // Observe several beats.
         // --------------------------------------------------------
 
-        repeat (40) begin
+        // Two exact simulated minutes prove both the tick count and the
+        // alternating whole-clock intervals used for fractional periods.
+        repeat (2 * MINUTE_CLKS) begin
 
             @(posedge clk);
 
@@ -109,26 +114,15 @@ module beat_gen_tb;
                     phase_ms
                 );
 
-                // phase_ms holds its MAXIMUM on the tick cycle -- the phase
-                // timer's reset is driven by tick, so zero arrives on the NEXT
-                // edge. The old check asserted the opposite and failed a
-                // correct DUT. Measured: phase_ms == tick_ms here.
-                if (phase_ms !== tick_ms) begin
-                    $display("FAIL: phase_ms should equal tick_ms at the tick, got %0d",
-                             phase_ms);
-                    errors = errors + 1;
-                end
-
-                // Interval check. The correct period is
-                //     tick_ms * CLKS_PER_MS + 1
-                // the extra cycle being the reload. This is the check that
-                // would have caught the timer prescaler defect.
+                // A fractional divider may use either adjacent whole-clock
+                // interval; no other interval is permitted.
                 if (last_tick_cycle >= 0) begin
-                    if ((cycle_count - last_tick_cycle)
-                        !== (SIM_TICK_MS * SIM_CLKS_PER_MS + 1)) begin
-                        $display("FAIL: tick period %0d, expected %0d",
+                    if (((cycle_count - last_tick_cycle) != SHORT_INTERVAL)
+                        && ((cycle_count - last_tick_cycle)
+                            != (SHORT_INTERVAL + 1))) begin
+                        $display("FAIL: tick period %0d, expected %0d or %0d",
                                  cycle_count - last_tick_cycle,
-                                 SIM_TICK_MS * SIM_CLKS_PER_MS + 1);
+                                 SHORT_INTERVAL, SHORT_INTERVAL + 1);
                         errors = errors + 1;
                     end
                 end
@@ -139,15 +133,16 @@ module beat_gen_tb;
         end
 
 
-        // We should have seen multiple beats.
-        if (tick_count < 3) begin
-            $display("FAIL: expected at least 3 ticks, got %0d", tick_count);
+        // Exact average BPM: two minutes must contain exactly 2*BPM pulses.
+        if (tick_count != (2 * SIM_BPM)) begin
+            $display("FAIL: expected %0d ticks in two minutes, got %0d",
+                     2 * SIM_BPM, tick_count);
             errors = errors + 1;
         end
         else begin
-            $display("phase_ms zeroes one cycle after the tick, as designed.");
-            $display("tick period is tick_ms*CLKS_PER_MS+1 = %0d cycles.",
-                     SIM_TICK_MS * SIM_CLKS_PER_MS + 1);
+            $display("%0d BPM exact over two simulated minutes.", SIM_BPM);
+            $display("tick intervals are %0d or %0d clocks.",
+                     SHORT_INTERVAL, SHORT_INTERVAL + 1);
         end
 
         if (errors == 0) begin
@@ -163,7 +158,7 @@ module beat_gen_tb;
 
     // Watchdog: a hang must FAIL the suite, not stall it.
     initial begin
-        #100000;
+        #5000000;
         $fatal(1, "beat_gen_tb: timeout");
     end
 

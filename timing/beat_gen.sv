@@ -1,8 +1,9 @@
 /*
 * beat_gen.sv
 * 
-* This code creates the musical beat. It turns the clock ticks from timer.v
-* into a difficulty-selected gameplay tick.
+ * This code creates the musical beat. A fractional phase accumulator produces
+ * an exact average integer BPM without rounding the period to milliseconds.
+ * timer.v remains the millisecond phase source used by the hit detector.
 */
 
 `timescale 1ns/1ns
@@ -13,9 +14,8 @@ module beat_gen #(
     input  logic        clk,
     input  logic        reset,
 
-    // Length of one musical tick in milliseconds.
-    // Easy/Medium/Hard values are supplied by level_select.
-    input  logic [10:0] tick_ms,
+    // Musical tempo supplied by level_select.
+    input  logic [7:0]  bpm,
 
     // One-clock pulse at the start of every tick.
     output logic        tick,
@@ -24,31 +24,34 @@ module beat_gen #(
     output logic [10:0] phase_ms
 );
 
-    logic [10:0] t_ms;
+    // There are 60,000 milliseconds in one minute. Adding BPM once per clock
+    // and subtracting this threshold on overflow emits exactly BPM ticks in
+    // exactly one minute of FPGA clocks. Non-integral periods are represented
+    // by adjacent whole-clock intervals, so there is no cumulative drift.
+    localparam integer ACC_W =
+        $clog2((64'd60000 * CLKS_PER_MS) + 64'd256);
+    localparam logic [ACC_W:0] CLOCKS_PER_MINUTE =
+        64'd60000 * CLKS_PER_MS;
 
-    // ------------------------------------------------------------
-    // Beat countdown timer
-    //
-    // Counts down from tick_ms to 0.
-    // When t_ms reaches 0, tick becomes high.
-    // tick resets/reloads the timer on the next clock edge.
-    // ------------------------------------------------------------
-    timer #(
-        .MAX_MS(2047),
-        .CLKS_PER_MS(CLKS_PER_MS)
-    ) u_beat (
-        .clk(clk),
-        .reset(reset || tick),
-        .up(1'b0),
-        .start_value(tick_ms),
-        .enable(1'b1),
-        .timer_value(t_ms)
-    );
+    logic [ACC_W:0] beat_phase;
+    logic [ACC_W:0] beat_sum;
 
-    // tick is high while the countdown timer is at zero.
-    // Because the timer is reset on the next clock edge,
-    // this lasts for exactly one clock cycle.
-    assign tick = (t_ms == 11'd0);
+    always_comb begin
+        beat_sum = beat_phase + bpm;
+    end
+
+    always_ff @(posedge clk) begin
+        if (reset || (bpm == 0)) begin
+            beat_phase <= '0;
+            tick       <= 1'b0;
+        end else if (beat_sum >= CLOCKS_PER_MINUTE) begin
+            beat_phase <= beat_sum - CLOCKS_PER_MINUTE;
+            tick       <= 1'b1;
+        end else begin
+            beat_phase <= beat_sum;
+            tick       <= 1'b0;
+        end
+    end
 
 
     // ------------------------------------------------------------
