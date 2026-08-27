@@ -1,0 +1,289 @@
+# =============================================================================
+# piano_tiles.qsf  --  MTRX3700 Assignment 1, Piano Tiles
+#                      DE1-SoC, Cyclone V 5CSEMA5F31C6
+#
+# HOW TO USE THIS FILE
+#   Put it beside top_level.sv, rename the project to piano_tiles, and open it
+#   with File > Open Project. Quartus reads this file directly; there is nothing
+#   to import.
+#
+# PIN NUMBERS
+#   Transcribed from Terasic's pin_assignment_DE1_SoC.tcl (rev 1.7) and
+#   cross-checked against a second independent listing; both agree on every pin
+#   used here. VERIFY THEM ONCE against your own board's documentation before
+#   the first programming run. A wrong pin number is not an error in Quartus --
+#   it is a board where one thing quietly does not work.
+#
+# THE FAILURE MODE TO KNOW ABOUT
+#   Quartus resolves pin assignments BY NAME. If top_level.sv renames a port,
+#   or changes a bus width, the matching assignment below stops applying and
+#   Quartus reports it as a warning, not an error. The design will compile and
+#   the pin will float. If something on the board does nothing at all, read the
+#   Fitter's unassigned-pin warnings before touching the RTL.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Device
+# -----------------------------------------------------------------------------
+set_global_assignment -name FAMILY "Cyclone V"
+set_global_assignment -name DEVICE 5CSEMA5F31C6
+set_global_assignment -name TOP_LEVEL_ENTITY top_level
+set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output_files
+set_global_assignment -name DEVICE_FILTER_PACKAGE FBGA
+set_global_assignment -name DEVICE_FILTER_PIN_COUNT 896
+set_global_assignment -name DEVICE_FILTER_SPEED_GRADE 6
+
+# -----------------------------------------------------------------------------
+# Unused pins
+# -----------------------------------------------------------------------------
+# Quartus defaults unused pins to "as output driving ground". On the DE1-SoC that
+# default can drive pins that are wired to the HPS, the SDRAM and the codec.
+# Tri-stating them is the safe setting and is what Terasic's own projects use.
+set_global_assignment -name RESERVE_ALL_UNUSED_PINS "AS INPUT TRI-STATED"
+set_global_assignment -name STRATIX_DEVICE_IO_STANDARD "3.3-V LVTTL"
+
+# -----------------------------------------------------------------------------
+# Language
+# -----------------------------------------------------------------------------
+# The design mixes .v (Verilog-2001: timer, debounce, synchroniser, seven_seg)
+# with .sv (SystemVerilog). Quartus infers the language from the extension, so
+# both compile side by side. This assignment only sets the default for .v files.
+set_global_assignment -name VERILOG_INPUT_VERSION SYSTEMVERILOG_2005
+
+# -----------------------------------------------------------------------------
+# Include search path  --  THE ONE THAT COSTS AN HOUR IF IT IS MISSING
+# -----------------------------------------------------------------------------
+# Nine files `include "game_params.svh". Quartus has no equivalent of the
+# simulator's -y flag: without this search path it reports "Can't open include
+# file" and points at the INCLUDING file's directory, not the missing one.
+#
+# Note what is NOT below: game_params.svh is deliberately absent from the file
+# list. It holds only `define macros. Adding it as a source file makes Quartus
+# try to compile it as a design unit and report that it contains no entities.
+set_global_assignment -name SEARCH_PATH "game_mechanics"
+
+# -----------------------------------------------------------------------------
+# Design files, in dependency order
+# -----------------------------------------------------------------------------
+# Reused unmodified from the Reaction Time Game (R0):
+set_global_assignment -name VERILOG_FILE player_input/synchroniser.v
+set_global_assignment -name VERILOG_FILE player_input/debounce.v
+set_global_assignment -name VERILOG_FILE timing/timer.v
+set_global_assignment -name VERILOG_FILE display/sev_seg.v
+set_global_assignment -name SYSTEMVERILOG_FILE Rob/rng.sv
+
+# Task 1 -- input conditioning
+set_global_assignment -name SYSTEMVERILOG_FILE player_input/button_input.sv
+
+# Task 2 -- timing and hit detection
+set_global_assignment -name SYSTEMVERILOG_FILE timing/beat_gen.sv
+set_global_assignment -name SYSTEMVERILOG_FILE game_mechanics/hit_detector.sv
+
+# Task 3 -- schedule and lanes
+set_global_assignment -name SYSTEMVERILOG_FILE Rob/note_scheduler.sv
+set_global_assignment -name SYSTEMVERILOG_FILE Rob/lane_controller.sv
+
+# Task 4 -- level, multiplier, score
+set_global_assignment -name SYSTEMVERILOG_FILE game_mechanics/level_select.sv
+set_global_assignment -name SYSTEMVERILOG_FILE game_mechanics/multiplier.sv
+set_global_assignment -name SYSTEMVERILOG_FILE game_mechanics/score.sv
+set_global_assignment -name SYSTEMVERILOG_FILE game_mechanics/score_board_bcd.sv
+
+# Top level
+set_global_assignment -name SYSTEMVERILOG_FILE game_mechanics/top_level.v
+
+# DELIBERATELY NOT IN THIS LIST:
+#   *_tb.sv          -- contain #delays, forever and $finish; they will not
+#                       synthesise and must never enter the project.
+#   game_params.svh  -- macros only; reached via SEARCH_PATH above.
+#   lane_fsm.sv      -- the OTHER lane architecture. Kept in the repository
+#                       until the group ratifies the choice, but not built.
+#   seven_seg_decoder.sv -- superseded by the reused seven_seg.v, which blanks
+#                       on bcd > 9 and so keeps R5 free of extra logic.
+
+# -----------------------------------------------------------------------------
+# Timing constraints
+# -----------------------------------------------------------------------------
+set_global_assignment -name SDC_FILE top_level.sdc
+
+
+# -----------------------------------------------------------------------------
+# Clock
+# -----------------------------------------------------------------------------
+set_location_assignment PIN_AF14 -to CLOCK_50
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to CLOCK_50
+
+# -----------------------------------------------------------------------------
+# Push buttons -- ACTIVE LOW, inverted once inside button_input
+# -----------------------------------------------------------------------------
+set_location_assignment PIN_AA14 -to KEY[0]
+set_location_assignment PIN_AA15 -to KEY[1]
+set_location_assignment PIN_W15 -to KEY[2]
+set_location_assignment PIN_Y16 -to KEY[3]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to KEY[0]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to KEY[1]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to KEY[2]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to KEY[3]
+
+# -----------------------------------------------------------------------------
+# Slide switches -- SW0 reset, SW2:1 level, SW9:3 free
+# -----------------------------------------------------------------------------
+set_location_assignment PIN_AB12 -to SW[0]
+set_location_assignment PIN_AC12 -to SW[1]
+set_location_assignment PIN_AF9 -to SW[2]
+set_location_assignment PIN_AF10 -to SW[3]
+set_location_assignment PIN_AD11 -to SW[4]
+set_location_assignment PIN_AD12 -to SW[5]
+set_location_assignment PIN_AE11 -to SW[6]
+set_location_assignment PIN_AC9 -to SW[7]
+set_location_assignment PIN_AD10 -to SW[8]
+set_location_assignment PIN_AE12 -to SW[9]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to SW[0]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to SW[1]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to SW[2]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to SW[3]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to SW[4]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to SW[5]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to SW[6]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to SW[7]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to SW[8]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to SW[9]
+
+# -----------------------------------------------------------------------------
+# Red LEDs -- 9:7 level, 6:3 hit indicators, 2:0 multiplier
+# -----------------------------------------------------------------------------
+set_location_assignment PIN_V16 -to LEDR[0]
+set_location_assignment PIN_W16 -to LEDR[1]
+set_location_assignment PIN_V17 -to LEDR[2]
+set_location_assignment PIN_V18 -to LEDR[3]
+set_location_assignment PIN_W17 -to LEDR[4]
+set_location_assignment PIN_W19 -to LEDR[5]
+set_location_assignment PIN_Y19 -to LEDR[6]
+set_location_assignment PIN_W20 -to LEDR[7]
+set_location_assignment PIN_W21 -to LEDR[8]
+set_location_assignment PIN_Y21 -to LEDR[9]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to LEDR[0]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to LEDR[1]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to LEDR[2]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to LEDR[3]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to LEDR[4]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to LEDR[5]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to LEDR[6]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to LEDR[7]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to LEDR[8]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to LEDR[9]
+
+# -----------------------------------------------------------------------------
+# HEX0 -- lane 0 countdown
+# -----------------------------------------------------------------------------
+set_location_assignment PIN_AE26 -to HEX0[0]
+set_location_assignment PIN_AE27 -to HEX0[1]
+set_location_assignment PIN_AE28 -to HEX0[2]
+set_location_assignment PIN_AG27 -to HEX0[3]
+set_location_assignment PIN_AF28 -to HEX0[4]
+set_location_assignment PIN_AG28 -to HEX0[5]
+set_location_assignment PIN_AH28 -to HEX0[6]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to HEX0[0]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to HEX0[1]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to HEX0[2]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to HEX0[3]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to HEX0[4]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to HEX0[5]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to HEX0[6]
+
+# -----------------------------------------------------------------------------
+# HEX1 -- lane 1 countdown
+# -----------------------------------------------------------------------------
+set_location_assignment PIN_AJ29 -to HEX1[0]
+set_location_assignment PIN_AH29 -to HEX1[1]
+set_location_assignment PIN_AH30 -to HEX1[2]
+set_location_assignment PIN_AG30 -to HEX1[3]
+set_location_assignment PIN_AF29 -to HEX1[4]
+set_location_assignment PIN_AF30 -to HEX1[5]
+set_location_assignment PIN_AD27 -to HEX1[6]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to HEX1[0]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to HEX1[1]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to HEX1[2]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to HEX1[3]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to HEX1[4]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to HEX1[5]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to HEX1[6]
+
+# -----------------------------------------------------------------------------
+# HEX2 -- lane 2 countdown
+# -----------------------------------------------------------------------------
+set_location_assignment PIN_AB23 -to HEX2[0]
+set_location_assignment PIN_AE29 -to HEX2[1]
+set_location_assignment PIN_AD29 -to HEX2[2]
+set_location_assignment PIN_AC28 -to HEX2[3]
+set_location_assignment PIN_AD30 -to HEX2[4]
+set_location_assignment PIN_AC29 -to HEX2[5]
+set_location_assignment PIN_AC30 -to HEX2[6]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to HEX2[0]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to HEX2[1]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to HEX2[2]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to HEX2[3]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to HEX2[4]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to HEX2[5]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to HEX2[6]
+
+# -----------------------------------------------------------------------------
+# HEX3 -- lane 3 countdown
+# -----------------------------------------------------------------------------
+set_location_assignment PIN_AD26 -to HEX3[0]
+set_location_assignment PIN_AC27 -to HEX3[1]
+set_location_assignment PIN_AD25 -to HEX3[2]
+set_location_assignment PIN_AC25 -to HEX3[3]
+set_location_assignment PIN_AB28 -to HEX3[4]
+set_location_assignment PIN_AB25 -to HEX3[5]
+set_location_assignment PIN_AB22 -to HEX3[6]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to HEX3[0]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to HEX3[1]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to HEX3[2]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to HEX3[3]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to HEX3[4]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to HEX3[5]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to HEX3[6]
+
+# -----------------------------------------------------------------------------
+# HEX4 -- score units
+# -----------------------------------------------------------------------------
+set_location_assignment PIN_AA24 -to HEX4[0]
+set_location_assignment PIN_Y23 -to HEX4[1]
+set_location_assignment PIN_Y24 -to HEX4[2]
+set_location_assignment PIN_W22 -to HEX4[3]
+set_location_assignment PIN_W24 -to HEX4[4]
+set_location_assignment PIN_V23 -to HEX4[5]
+set_location_assignment PIN_W25 -to HEX4[6]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to HEX4[0]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to HEX4[1]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to HEX4[2]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to HEX4[3]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to HEX4[4]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to HEX4[5]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to HEX4[6]
+
+# -----------------------------------------------------------------------------
+# HEX5 -- score tens
+# -----------------------------------------------------------------------------
+set_location_assignment PIN_V25 -to HEX5[0]
+set_location_assignment PIN_AA28 -to HEX5[1]
+set_location_assignment PIN_Y27 -to HEX5[2]
+set_location_assignment PIN_AB27 -to HEX5[3]
+set_location_assignment PIN_AB26 -to HEX5[4]
+set_location_assignment PIN_AA26 -to HEX5[5]
+set_location_assignment PIN_AA25 -to HEX5[6]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to HEX5[0]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to HEX5[1]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to HEX5[2]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to HEX5[3]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to HEX5[4]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to HEX5[5]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to HEX5[6]
+
+set_global_assignment -name LAST_QUARTUS_VERSION "18.1.0 Lite Edition"
+set_global_assignment -name RESERVE_ALL_UNUSED_PINS_NO_OUTPUT_GND "AS INPUT TRI-STATED"
+set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
+set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -section_id Top
+set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
+set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top

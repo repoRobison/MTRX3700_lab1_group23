@@ -1,0 +1,372 @@
+1. BUTTON BEHAVIOUR / INPUT HANDLING + INTEGRATION - ETHAN
+
+Responsibilities:
+- Debounce KEY[3:0].
+- Convert active-low button inputs into clean internal press signals.
+- Detect a new button press edge rather than continuously detecting a held button.
+- Prevent holding a button from scoring successive notes.
+- Send button press events to Task 2 for hit detection.
+
+Required behaviour:
+- KEY0 -> Lane 1
+- KEY1 -> Lane 2
+- KEY2 -> Lane 3
+- KEY3 -> Lane 4
+- Holding a button generates only one press until it is released and pressed again.
+- Button mashing cannot be a winning strategy.
+
+Output:
+- press_pulse[3:0]
+
+Interface:
+KEY[3:0]
+    -> Debounce + edge detection
+    -> press_pulse[3:0]
+    -> Task 2
+
+
+2. CLOCK / BPM / REACTION TIMING / HIT DETECTION / LEDS - JEN
+
+Responsibilities:
+- Convert the 50 MHz FPGA clock into the musical timing tick.
+- Keep countdowns synchronised to the chosen song.
+- Generate the tick that advances the schedule/countdowns.
+- Implement the normal hit window.
+- Implement the narrower perfect-hit window.
+- Determine whether each button press is:
+    - perfect hit
+    - normal hit
+    - invalid/early press
+- Detect when a hit window expires without a successful press.
+- Generate the successful-hit LED pulse (~200-500 ms).
+
+Timing concept:
+50 MHz clock
+    -> BPM divider
+    -> beat/half-beat tick
+    -> schedule/countdowns advance
+
+When a lane reaches 0:
+0 to ~200 ms   -> perfect hit
+~200 to 500 ms -> normal hit
+>~500 ms       -> miss
+
+Exact windows should be parameters and vary with difficulty.
+
+Inputs:
+- clock
+- reset
+- press_pulse[3:0] from Task 1
+- lane_zero[3:0] from Task 3
+- difficulty from Task 4
+
+Outputs:
+- beat_tick
+- perfect_hit[3:0]
+- normal_hit[3:0]
+- miss[3:0]
+- invalid_press[3:0]
+- led_pulse[3:0]
+
+Interfaces:
+Task 1 press_pulse[3:0] -> Task 2
+Task 3 lane_zero[3:0] -> Task 2
+Task 4 difficulty -> Task 2
+Task 2 beat_tick -> Task 3
+Task 2 hit/miss/perfect signals -> Tasks 3 and 4
+
+
+3. SCHEDULING ARRAY / RNG / LANE COUNTDOWN / 7-SEGMENT DISPLAY - ROB
+
+Schedule representation:
+Each time position contains a 4-bit lane mask:
+
+0000 -> no notes
+0001 -> Lane 1
+0010 -> Lane 2
+0100 -> Lane 3
+1000 -> Lane 4
+
+Multiple bits allow simultaneous notes:
+0011 -> Lanes 1 and 2
+1010 -> Lanes 2 and 4
+
+Conceptually:
+schedule[time_index][3:0]
+
+Responsibilities:
+- Maintain the future-note schedule.
+- Move/advance the schedule on each beat_tick.
+- Reuse the Reaction Time Game RNG.
+- Use RNG to select:
+    - lane
+    - future countdown/time position
+- Schedule notes only into valid/free positions.
+- Allow simultaneous notes where permitted by difficulty.
+- Maintain the countdown displayed for each active lane.
+- Display lane countdowns on HEX3-HEX0.
+- Blank a HEX display when its lane is inactive.
+- Indicate to Task 2 when a lane reaches 0.
+- Clear/deactivate a lane after Task 2 reports a hit or miss.
+- Ensure average note generation rate satisfies the assignment requirement.
+
+Example:
+Time:       6     5     4     3     2     1     0
+Schedule: 0000  0010  0000  0001  0000  0100  0000
+
+An active lane could therefore display:
+6 -> 5 -> 4 -> 3 -> 2 -> 1 -> 0
+
+Possible RNG use:
+RNG bits [1:0] -> lane
+Other RNG bits -> future countdown index
+
+Inputs:
+- beat_tick from Task 2
+- difficulty from Task 4
+- hit/miss results from Task 2
+- reset
+- RNG value
+
+Outputs:
+- lane_zero[3:0]
+- lane_active[3:0]
+- lane countdown values
+- HEX3-HEX0
+
+Interfaces:
+Task 2 beat_tick -> Task 3 advances schedule
+Task 4 difficulty -> Task 3 controls spawn behaviour
+Task 3 lane_zero[3:0] -> Task 2
+Task 2 hit/miss -> Task 3 clears/resolves lane
+
+
+4. SCORING / MULTIPLIER / DIFFICULTY - JAMES
+
+Responsibilities:
+- Maintain the score.
+- Display score on HEX5-HEX4.
+- Award points for normal hits.
+- Award bonus points for perfect hits.
+- Maintain successful-hit streak.
+- Implement score multiplier.
+- Reset multiplier/streak after misses or invalid presses.
+- Define score overflow behaviour.
+- Read difficulty selection switches.
+- Indicate selected difficulty on hardware.
+- Use spare LEDRs to indicate multiplier if desired.
+
+Suggested scoring:
+Normal hit  -> +1 x multiplier
+Perfect hit -> +2 x multiplier
+
+Example multiplier:
+3 consecutive successful hits -> x2
+6 consecutive successful hits -> x3
+Miss/invalid press -> streak/multiplier reset
+
+Error behaviour:
+Press on inactive lane:
+    -> no score
+    -> reset multiplier
+
+Press too early:
+    -> note forfeited
+    -> no score
+    -> reset multiplier
+
+Hit-window timeout:
+    -> miss
+    -> reset multiplier
+
+Held button:
+    -> only initial press edge is registered
+
+Score overflow:
+Recommended:
+score >= 99 -> saturate at 99
+
+Difficulty selection:
+SW0 -> RESET
+Remaining switches -> EASY / MEDIUM / HARD
+
+All levels use the same song BPM. Difficulty changes game behaviour rather than song tempo.
+
+Difficulty | Spawn Rate | Hit Window | Perfect Window | Simultaneous Notes
+Easy       | Slow       | Wide       | Wide           | No
+Medium     | Medium     | Medium     | Medium         | Rare/No
+Hard       | Fast       | Narrow     | Narrow         | Yes
+
+Inputs:
+- perfect_hit[3:0] from Task 2
+- normal_hit[3:0] from Task 2
+- miss[3:0] from Task 2
+- invalid_press[3:0] from Task 2
+- difficulty switches
+- reset
+
+Outputs:
+- score
+- multiplier
+- difficulty
+- HEX5-HEX4
+- spare LEDRs for difficulty/multiplier
+
+Interfaces:
+Task 2 hit/miss/perfect signals -> Task 4 scoring
+Difficulty switches -> Task 4
+Task 4 difficulty -> Task 2 hit-window timing
+Task 4 difficulty -> Task 3 spawn/simultaneous-note behaviour
+
+
+OVERALL INTERFACE
+
+KEY[3:0]
+    |
+    v
+[1. BUTTON HANDLING]
+    |
+    | press_pulse[3:0]
+    v
+[2. TIMING + HIT DETECTION] <----- lane_zero ----- [3. SCHEDULER / LANES]
+    |                                      ^                 |
+    | beat_tick ---------------------------|                 |
+    |                                                        |
+    | hit / miss / perfect -------------------------->-------|
+    |
+    +---------------- hit / miss / perfect -----------------> [4. SCORING]
+                                                               |
+                                                               | difficulty
+                                                               +----> Task 2
+                                                               +----> Task 3
+
+
+MAIN INTERFACE SIGNALS
+
+Task 1 -> Task 2:
+- press_pulse[3:0]
+
+Task 2 -> Task 3:
+- beat_tick
+- hit/miss result
+
+Task 3 -> Task 2:
+- lane_zero[3:0]
+- lane state as required
+
+Task 2 -> Task 4:
+- perfect_hit[3:0]
+- normal_hit[3:0]
+- miss[3:0]
+- invalid_press[3:0]
+
+Task 4 -> Task 2:
+- difficulty / hit-window parameters
+
+Task 4 -> Task 3:
+- difficulty / spawn parameters
+
+
+TESTING RESPONSIBILITY
+
+Each person:
+- Writes self-checking testbenches for their own modules.
+- Tests important edge cases and invalid behaviour.
+- Ensures their module works with parameter-reduced simulation timing.
+
+Whole group:
+- System-level integration test.
+- FPGA integration/debugging.
+- Understand all four subsystems and their interfaces for the live-change demo.
+"""
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Brainstorm:
+
+Heart of functionality: Spawn -> schedule x 4 bits 2 lanes - length:1-MAXIMUM second countdown + 0 expiration
+
+0000 → no notes
+0001 → lane 1
+0010 → lane 2
+0100 → lane 3
+1000 → lane 4
+
+clock ****
+ -> BPM (level dependent) -> each 7-seg counts down + time array moves across
+ -> reaction timing
+    -> ~500ms: time limit for a 0 tile to be pressed
+    -> ~200ms: perfect hit -> potential for multiplier logic
+
+Expiration behaviour:
+- 7-seg display = 0
+- Led-lit up (successful hit only)
+-> after: idle state (no next expiration set), countdown -> next experation state is set
+- chooses available position in time array (lane and tiume is determined by random number generator)
+      -> respective 7-seg is then set to that index in the array on next clock rising edge if free. If not free, set after it expires next
+
+
+Diffiuclty behaviours:
+- Determined by switches: RESET, EASY, MEDIUM, HARD
+- All difficulties have the same tempo/BPM, but generate the presses at different rates (?)
+- Hard difficulty could implement 2 lanes resolving at the same time
+- duration of window for tile to be hit becomes narrower as difficulty increases
+
+Scoring behaviours:
+- Multiplier based on successful presses (maybe every x presses or on a perfect timing?), reset on miss?
+    - multiplier count using other LEDRs (0-2, 7-9)
+- Perfect hit bonus, could tie into HARD difficulty only allowing perfect hits
+- On score overflow i.e. 99-100 end game? or implement hundreds counter using LEDs?
+- LED should light up on a successful press (LEDR6 - LEDR3)
+
+Button behaviour
+
+Error behaviours:
+- Press on empty lane: minus score, reset multiplier
+- Press at wrong timing: "                         "
+- Press and hold: Next press doesn't register as score if the button is continously held down?
+
+Level Difficulty:
+Difficulty | Spawn Rate | Hit Window | Perfect Window | Simultaneous Notes
+-----------|------------|------------|----------------|-------------------
+Easy       | Slow       | Wide       | Wide           | No
+Medium     | Medium     | Medium     | Medium         | Rare/No
+Hard       | Fast       | Narrow     | Narrow         | Yes
+
+
+Task Division:
+1. Button behaviour + integration -> no mashing ()
+2. Clock -> BPM + reaction time + hit detection logic -> needs to interface 3
+3. Scheduling array + 7-segment display
+4. Scoring + Multiplier behavour -> combinatorial logic based on most of the reset
+    - requires a count of perfect / acceptable hits
+
+James: Hardware testing, Scoring + Multiplier Behaviour
+
+Jen: Clock stuff (2.)
+
+Ethan: Button module 
+
+Rob

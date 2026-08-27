@@ -1,0 +1,23 @@
+# vsim -c -lib C:\Users\jimmy\AppData\Local\Temp\fpga_smoke_sim_70d834776b274a07a267fb34bf40f219\work fpga_smoke_test_tb -do "run -all; quit -f" 
+# Start time: 16:42:16 on Aug 27,2026
+# Loading sv_std.std
+# Loading C:\Users\jimmy\AppData\Local\Temp\fpga_smoke_sim_70d834776b274a07a267fb34bf40f219\work.fpga_smoke_test_tb
+# Loading C:\Users\jimmy\AppData\Local\Temp\fpga_smoke_sim_70d834776b274a07a267fb34bf40f219\work.fpga_smoke_test
+# Loading C:\Users\jimmy\AppData\Local\Temp\fpga_smoke_sim_70d834776b274a07a267fb34bf40f219\work.synchroniser
+# Loading C:\Users\jimmy\AppData\Local\Temp\fpga_smoke_sim_70d834776b274a07a267fb34bf40f219\work.timer
+# Loading C:\Users\jimmy\AppData\Local\Temp\fpga_smoke_sim_70d834776b274a07a267fb34bf40f219\work.seven_seg_decoder
+# Loading C:\Users\jimmy\AppData\Local\Temp\fpga_smoke_sim_70d834776b274a07a267fb34bf40f219\work.debounce
+# run -all
+# PASS: reset and score display
+# PASS: lane 0 countdown and inactive-display blanking
+# PASS: incorrect key rejected
+# PASS: correct key scored and LED pulse duration matched
+# PASS: lanes cycle 0-1-2-3 and held key does not repeat
+# PASS: released/re-pressed matching key updates score
+# PASS: second reset clears state
+# PASS: score carries through 09/10 and saturates at 99
+# ALL FPGA SMOKE TEST CHECKS PASSED
+# ** Note: $finish    : smoke_test/fpga_smoke_test_tb.sv(290)
+#    Time: 347750 ns  Iteration: 1  Instance: /fpga_smoke_test_tb
+# End time: 16:42:17 on Aug 27,2026, Elapsed time: 0:00:01
+# Errors: 0, Warnings: 0
