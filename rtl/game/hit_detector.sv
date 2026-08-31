@@ -1,9 +1,6 @@
 //=============================================================================
 // hit_detector.sv -- Task 2: hit classification, miss timeout, hit-indicator LEDs
 //
-// STATUS: DRAFT. This file did not exist; top_level.sv cannot be wired without
-// it, so it is written here to make the project buildable. Task 2 owns it and
-// should review every line before the demo.
 //
 // WHY IT MATTERS MORE THAN ITS SIZE SUGGESTS
 //   It is the only consumer of button_input's press_pulse and the only producer
