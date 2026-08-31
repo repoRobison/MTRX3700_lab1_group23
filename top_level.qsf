@@ -1,11 +1,10 @@
 # =============================================================================
-# piano_tiles.qsf  --  MTRX3700 Assignment 1, Piano Tiles
+# top_level.qsf  --  MTRX3700 Assignment 1, Piano Tiles
 #                      DE1-SoC, Cyclone V 5CSEMA5F31C6
 #
 # HOW TO USE THIS FILE
-#   Put it beside top_level.sv, rename the project to piano_tiles, and open it
-#   with File > Open Project. Quartus reads this file directly; there is nothing
-#   to import.
+#   Open piano_tiles.qpf and select the top_level revision. Quartus reads this
+#   file directly; there is nothing to import.
 #
 # PIN NUMBERS
 #   Transcribed from Terasic's pin_assignment_DE1_SoC.tcl (rev 1.7) and
@@ -28,7 +27,7 @@
 set_global_assignment -name FAMILY "Cyclone V"
 set_global_assignment -name DEVICE 5CSEMA5F31C6
 set_global_assignment -name TOP_LEVEL_ENTITY top_level
-set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output_files
+set_global_assignment -name PROJECT_OUTPUT_DIRECTORY build/top_level
 set_global_assignment -name DEVICE_FILTER_PACKAGE FBGA
 set_global_assignment -name DEVICE_FILTER_PIN_COUNT 896
 set_global_assignment -name DEVICE_FILTER_SPEED_GRADE 6
@@ -60,51 +59,53 @@ set_global_assignment -name VERILOG_INPUT_VERSION SYSTEMVERILOG_2005
 # Note what is NOT below: game_params.svh is deliberately absent from the file
 # list. It holds only `define macros. Adding it as a source file makes Quartus
 # try to compile it as a design unit and report that it contains no entities.
-set_global_assignment -name SEARCH_PATH "game_mechanics"
+set_global_assignment -name SEARCH_PATH "rtl/common"
 
 # -----------------------------------------------------------------------------
 # Design files, in dependency order
 # -----------------------------------------------------------------------------
-# Reused unmodified from the Reaction Time Game (R0):
-set_global_assignment -name VERILOG_FILE player_input/synchroniser.v
-set_global_assignment -name VERILOG_FILE player_input/debounce.v
-set_global_assignment -name VERILOG_FILE timing/timer.v
-set_global_assignment -name VERILOG_FILE display/sev_seg.v
-set_global_assignment -name SYSTEMVERILOG_FILE Rob/rng.sv
+# Adapted from/reusing the Reaction Time Game (R0).  README.md records the
+# changes; none of these files is claimed to be byte-for-byte unmodified.
+set_global_assignment -name VERILOG_FILE rtl/input/synchroniser.v
+set_global_assignment -name VERILOG_FILE rtl/input/debounce.v
+set_global_assignment -name VERILOG_FILE rtl/timing/timer.v
+set_global_assignment -name VERILOG_FILE rtl/display/seven_seg.v
+set_global_assignment -name SYSTEMVERILOG_FILE rtl/game/rng.sv
+set_global_assignment -name SYSTEMVERILOG_FILE rtl/display/bcd_encoder_4.sv
+set_global_assignment -name SYSTEMVERILOG_FILE rtl/display/display.sv
+set_global_assignment -name SYSTEMVERILOG_FILE rtl/game/reaction_time_fsm.sv
 
 # Task 1 -- input conditioning
-set_global_assignment -name SYSTEMVERILOG_FILE player_input/button_input.sv
+set_global_assignment -name SYSTEMVERILOG_FILE rtl/input/button_input.sv
 
 # Task 2 -- timing and hit detection
-set_global_assignment -name SYSTEMVERILOG_FILE timing/beat_gen.sv
-set_global_assignment -name SYSTEMVERILOG_FILE game_mechanics/hit_detector.sv
+set_global_assignment -name SYSTEMVERILOG_FILE rtl/timing/beat_gen.sv
+set_global_assignment -name SYSTEMVERILOG_FILE rtl/game/hit_detector.sv
 
 # Task 3 -- schedule and lanes
-set_global_assignment -name SYSTEMVERILOG_FILE Rob/note_scheduler.sv
-set_global_assignment -name SYSTEMVERILOG_FILE Rob/lane_controller.sv
+set_global_assignment -name SYSTEMVERILOG_FILE rtl/game/note_scheduler.sv
+set_global_assignment -name SYSTEMVERILOG_FILE rtl/game/lane_controller.sv
 
 # Task 4 -- level, multiplier, score
-set_global_assignment -name SYSTEMVERILOG_FILE game_mechanics/level_select.sv
-set_global_assignment -name SYSTEMVERILOG_FILE game_mechanics/multiplier.sv
-set_global_assignment -name SYSTEMVERILOG_FILE game_mechanics/score.sv
-set_global_assignment -name SYSTEMVERILOG_FILE game_mechanics/score_board_bcd.sv
+set_global_assignment -name SYSTEMVERILOG_FILE rtl/game/level_select.sv
+set_global_assignment -name SYSTEMVERILOG_FILE rtl/game/multiplier.sv
+set_global_assignment -name SYSTEMVERILOG_FILE rtl/game/score.sv
 
 # Top level
-set_global_assignment -name SYSTEMVERILOG_FILE game_mechanics/top_level.v
+set_global_assignment -name SYSTEMVERILOG_FILE rtl/top/top_level.sv
 
 # DELIBERATELY NOT IN THIS LIST:
 #   *_tb.sv          -- contain #delays, forever and $finish; they will not
 #                       synthesise and must never enter the project.
 #   game_params.svh  -- macros only; reached via SEARCH_PATH above.
-#   lane_fsm.sv      -- the OTHER lane architecture. Kept in the repository
-#                       until the group ratifies the choice, but not built.
-#   seven_seg_decoder.sv -- superseded by the reused seven_seg.v, which blanks
-#                       on bcd > 9 and so keeps R5 free of extra logic.
+#   Legacy lane_fsm variants -- omitted from this clean project because the
+#                       active architecture is scheduler/controller/detector.
+#   smoke_test/seven_seg_decoder.sv -- used only by the smoke-test revision.
 
 # -----------------------------------------------------------------------------
 # Timing constraints
 # -----------------------------------------------------------------------------
-set_global_assignment -name SDC_FILE top_level.sdc
+set_global_assignment -name SDC_FILE constraints/top_level.sdc
 
 
 # -----------------------------------------------------------------------------
@@ -286,4 +287,6 @@ set_global_assignment -name RESERVE_ALL_UNUSED_PINS_NO_OUTPUT_GND "AS INPUT TRI-
 set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
 set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -section_id Top
 set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
+
+
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top

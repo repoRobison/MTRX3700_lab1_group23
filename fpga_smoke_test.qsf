@@ -9,14 +9,14 @@ set_global_assignment -name ORIGINAL_QUARTUS_VERSION 18.1.0
 set_global_assignment -name LAST_QUARTUS_VERSION "18.1.0 Lite Edition"
 
 set_global_assignment -name SYSTEMVERILOG_FILE smoke_test/fpga_smoke_test.sv
-set_global_assignment -name VERILOG_FILE player_input/synchroniser.v
-set_global_assignment -name VERILOG_FILE player_input/debounce.v
-set_global_assignment -name VERILOG_FILE timing/timer.v
-set_global_assignment -name SYSTEMVERILOG_FILE Rob/seven_seg_decoder.sv
-set_global_assignment -name SDC_FILE smoke_test/fpga_smoke_test.sdc
+set_global_assignment -name VERILOG_FILE rtl/input/synchroniser.v
+set_global_assignment -name VERILOG_FILE rtl/input/debounce.v
+set_global_assignment -name VERILOG_FILE rtl/timing/timer.v
+set_global_assignment -name SYSTEMVERILOG_FILE smoke_test/seven_seg_decoder.sv
+set_global_assignment -name SDC_FILE constraints/fpga_smoke_test.sdc
 
 # Keep smoke-test output distinct from the full-game output directory.
-set_global_assignment -name PROJECT_OUTPUT_DIRECTORY smoke_test/quartus_output
+set_global_assignment -name PROJECT_OUTPUT_DIRECTORY build/fpga_smoke_test
 set_global_assignment -name MIN_CORE_JUNCTION_TEMP 0
 set_global_assignment -name MAX_CORE_JUNCTION_TEMP 85
 set_global_assignment -name ERROR_CHECK_FREQUENCY_DIVISOR 256

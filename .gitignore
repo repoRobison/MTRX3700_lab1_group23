@@ -1,0 +1,19 @@
+# Quartus-generated compilation data
+/db/
+/incremental_db/
+/build/
+
+# Simulator-generated data
+/work/
+/obj_dir/
+*.log
+*.vcd
+transcript
+
+# Quartus GUI and diagnostic state
+*.qws
+c5_pin_model_dump.txt
+
+# Operating-system metadata
+.DS_Store
+Thumbs.db
