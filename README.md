@@ -16,7 +16,7 @@ hardware check. Its programming file is generated under
 ## Project structure
 
 ```text
-Piano_Tiles_Clean/
+Piano_Tiles/
 |-- piano_tiles.qpf
 |-- top_level.qsf
 |-- fpga_smoke_test.qsf
