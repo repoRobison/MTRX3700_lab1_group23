@@ -156,8 +156,8 @@
 //   level   song             bpm  countdown  win_ms  perf_ms  cadence  chord
 //   -----   ---------------  ---  ---------  ------  -------  -------  -----
 //   easy    Come Together     83    3 .. 6     700      250       2        1
-//   medium  Get Back         120    3 .. 6     400      150       2        1
-//   hard    Get Back         120    2 .. 5     250       80       2        2
+//   medium  Get Back         123    3 .. 6     400      150       2        1
+//   hard    Get Back         123    2 .. 5     250       80       2        2
 //
 // The perfect window is 40%, 48% and 40% of its own hit window, so "perfect"
 // stays a real discrimination at every level rather than becoming either
@@ -197,8 +197,8 @@
 `define GP_L0_CADENCE     2         // spawn attempt every 2 ticks
 `define GP_L0_MAX_CHORD   1         // no two notes resolve on one tick
 
-`define GP_L1_BPM         120       // Get Back
-`define GP_L1_TICK_MS     500       // exact whole-ms period; validation/docs
+`define GP_L1_BPM         123       // Get Back
+`define GP_L1_TICK_MS     488       // exact whole-ms period; validation/docs
 `define GP_L1_CMIN        3
 `define GP_L1_CMASK       3         // 3 + (0..3) -> 3..6
 `define GP_L1_WIN_MS      400
@@ -206,8 +206,8 @@
 `define GP_L1_CADENCE     2
 `define GP_L1_MAX_CHORD   1         // no two notes resolve on one tick
 
-`define GP_L2_BPM         120       // Get Back; difficulty comes from chords
-`define GP_L2_TICK_MS     500       // exact whole-ms period; validation/docs
+`define GP_L2_BPM         123       // Get Back; difficulty comes from chords
+`define GP_L2_TICK_MS     488       // exact whole-ms period; validation/docs
 `define GP_L2_CMIN        2
 `define GP_L2_CMASK       3         // 2 + (0..3) -> 2..5
 `define GP_L2_WIN_MS      250
