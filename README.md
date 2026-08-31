@@ -78,9 +78,9 @@ reason for each are recorded in `docs/module_reuse.md`.
 
 ## Difficulty timing
 
-- Easy: 83 BPM
-- Medium: 120 BPM
-- Hard: 120 BPM, with independently scheduled notes allowed to coincide
+- Easy: 83 BPM, Come Together - The Beatles
+- Medium: 120 BPM, Get Back - The Beatles
+- Hard: 120 BPM, with independently scheduled notes allowed to coincide,  Get Back - The Beatles
 
 ## Generated files
 
