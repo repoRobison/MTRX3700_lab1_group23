@@ -2,13 +2,25 @@
 /db/
 /incremental_db/
 /build/
+/output_files/
+*.sof
+*.pof
+*.jdi
+*.smsg
+*.summary
+*.done
+*_nativelink_simulation.rpt
 
 # Simulator-generated data
 /work/
 /obj_dir/
+/simulation/
 *.log
 *.vcd
 transcript
+
+# Local report rendering and scratch data
+/tmp/
 
 # Quartus GUI and diagnostic state
 *.qws

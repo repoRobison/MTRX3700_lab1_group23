@@ -79,13 +79,52 @@ module hit_detector_tb;
 
     integer cycle;
     initial begin
+        $dumpfile("hit_detector.vcd");
+        $dumpvars(0, hit_detector_tb);
+
         $display("T1 perfect window occupies the leading edge");
         reset_dut();
         press_lane0(49, 1'b1);
         reset_dut();
         press_lane0(50, 1'b0);
 
-        $display("T2 normal hit remains one solid LED flash");
+        $display("T2 each simultaneous press is classified independently");
+        reset_dut();
+        @(negedge clk);
+        phase_ms   = 11'd100;  // valid normal window, outside perfect window
+        lane_zero  = 4'b0001;  // lane 0 is hittable
+        lane_active = 4'b0011; // lane 1 has an early countdown; 2/3 are blank
+        press_pulse = 4'b1111;
+        #1;
+        check(normal_hit  == 4'b0001, "lane 0 must be a normal hit");
+        check(perfect_hit == 4'b0000, "normal-window press must not be perfect");
+        check(forfeit     == 4'b0010, "active non-zero lane must be a forfeit");
+        check(stray       == 4'b1100, "blank-lane presses must be stray events");
+        check(miss        == 4'b0000, "press classification must not create a miss");
+
+        $display("T3 timeout produces miss, while an edge hit wins the tie");
+        reset_dut();
+        @(negedge clk);
+        phase_ms    = win_ms;
+        lane_zero   = 4'b0100;
+        lane_active = 4'b0100;
+        press_pulse = 4'b0000;
+        #1;
+        check(miss == 4'b0100, "expired zero lane must produce a miss");
+        check(normal_hit == 0 && perfect_hit == 0
+              && forfeit == 0 && stray == 0,
+              "passive timeout must not create a press event");
+
+        lane_zero   = 4'b1000;
+        lane_active = 4'b1000;
+        press_pulse = 4'b1000;
+        #1;
+        check(normal_hit == 4'b1000,
+              "press on the closing edge must still receive the note");
+        check(miss == 4'b0000,
+              "hit must suppress miss when both meet at the window edge");
+
+        $display("T4 normal hit remains one solid LED flash");
         reset_dut();
         press_lane0(100, 1'b0);
         for (cycle = 0; cycle < 100 * CPMS; cycle = cycle + 1) begin
@@ -94,7 +133,7 @@ module hit_detector_tb;
                   "normal-hit LED blinked during its solid interval");
         end
 
-        $display("T3 perfect hit rapidly flashes the same lane LED");
+        $display("T5 perfect hit rapidly flashes the same lane LED");
         reset_dut();
         press_lane0(10, 1'b1);
         transitions = 0;

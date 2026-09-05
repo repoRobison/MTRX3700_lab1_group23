@@ -83,6 +83,9 @@ module note_scheduler_tb;
     endtask
 
     initial begin
+        $dumpfile("note_scheduler.vcd");
+        $dumpvars(0, note_scheduler_tb);
+
         $display("T1 Easy/Medium cap rejects a second lane at one resolve time");
         countdown_min  = 4'd3;
         countdown_mask = 4'd3;
@@ -130,6 +133,35 @@ module note_scheduler_tb;
         beat(10'd4);  // second cadence tick spawns lane 2 at countdown 3
         check(future_active == 4'b0100 && countdown2 == 4'd3,
               "cadence=2 did not spawn on the second beat");
+
+        $display("T4 same-lane spacing rejects overlap and retries another lane");
+        countdown_min  = 4'd3;
+        countdown_mask = 4'd0;
+        spawn_cadence  = 4'd1;
+        max_chord      = 2'd1;
+        reset_scheduler();
+        beat(10'd0);  // base lane 0, fixed countdown 3
+        check(future_active == 4'b0001 && countdown0 == 4'd3,
+              "first fixed-countdown note was not placed in lane 0");
+        beat(10'd0);  // lane 0 is too close after shifting; retry must use lane 1
+        check(future_active == 4'b0011,
+              "scheduler did not retry another lane after spacing rejection");
+        check(countdown0 == 4'd2 && countdown1 == 4'd3,
+              "retry changed the existing countdown or used the wrong lane");
+
+        $display("T5 countdown mask selects both ends of the configured range");
+        countdown_min  = 4'd2;
+        countdown_mask = 4'd3;
+        spawn_cadence  = 4'd1;
+        max_chord      = 2'd1;
+        reset_scheduler();
+        beat(10'd0);   // offset 0, base lane 0
+        check(future_active == 4'b0001 && countdown0 == 4'd2,
+              "countdown-mask lower endpoint was not selected");
+        reset_scheduler();
+        beat(10'd24);  // random[4:3]=3, random[2:1]=0
+        check(future_active == 4'b0001 && countdown0 == 4'd5,
+              "countdown-mask upper endpoint was not selected");
 
         if (errors == 0) begin
             $display("note_scheduler_tb: PASS");
