@@ -18,9 +18,19 @@
 *.log
 *.vcd
 transcript
+modelsim.ini
+vsim.wlf
+cr_ie_info.json
+/score_work/
+
+
 
 # Local report rendering and scratch data
 /tmp/
+/docs/figures/*_raw.jpg
+*.png
+*.tex
+render_q3_waveforms.py
 
 # Quartus GUI and diagnostic state
 *.qws

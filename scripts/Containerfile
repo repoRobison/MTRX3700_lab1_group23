@@ -1,0 +1,45 @@
+# Containerfile, the Verilator simulation toolchain for this project, in a container.
+#
+# A container allows everyone to run the same Linux, compiler and Verilator.
+#
+# You never need to build or run this manually. The Verilator scripts @ scripts/
+# run_all_tests_verilator.py and scripts/simulate.py build the image
+# themselves the first time they need it, and use it automatically from then
+# on. In the Ed workspace the native Verilator is used.
+
+# Alpine is a tiny Linux distribution, so the image is small. It has to be the
+# rolling `edge` release: as of August 2026 it is the only Alpine that packages
+# Verilator 5.05, the same major version Ed runs (the stable releases have no
+# verilator at all). The image is built once and cached, so the rolling
+# release only matters the first time each machine builds it.
+FROM alpine:edge
+
+# Install Verilator and its dependencies. The list of packages is explained below.
+RUN apk add --no-cache \
+        verilator \
+        verilator-dev \
+        g++ \
+        make \
+        musl-dev \
+        perl \
+        python3 \
+        lz4-dev \
+        zlib-dev
+
+# Set the working directory to /work.
+WORKDIR /work
+
+# What each of the dependencies are for:
+#
+#   verilator       The simulator itself &
+#   verilator-dev   its include tree (verilated.mk, verilated_std.sv and the C++
+#                   runtime headers). Without it Verilator runs but every build
+#                   dies with "Cannot find verilated_std.sv"
+#
+#   g++, make,      Verilator translates your Verilog to C++ and then compiles
+#   musl-dev        it. This is that compiler.
+#
+#   perl, python3   Used by Verilator's driver and its generated makefiles
+#
+#   lz4-dev,        Headers for the FST waveform writer for file compression.
+#   zlib-dev
