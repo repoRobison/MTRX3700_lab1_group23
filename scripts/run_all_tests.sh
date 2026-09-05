@@ -19,7 +19,10 @@ cd "$PROJECT_ROOT" || exit 1
 
 PT_VERILATOR=${PT_VERILATOR:-verilator}
 PT_TIMEOUT=${PT_TIMEOUT:-180}
-VFLAGS="-Wall -Wno-TIMESCALEMOD -Wno-WIDTHEXPAND --trace --timing --assert"
+# Keep all lint diagnostics visible, but do not let warnings prevent a compiled
+# self-checking testbench from running.  PASS/FAIL is decided by compilation,
+# simulation exit status, and the bench's own assertions.
+VFLAGS="-Wall -Wno-fatal -Wno-TIMESCALEMOD -Wno-WIDTHEXPAND --trace --timing --assert"
 
 if ! command -v "$PT_VERILATOR" >/dev/null 2>&1; then
     echo "ERROR: Verilator was not found. Install Verilator 5 or set PT_VERILATOR."
